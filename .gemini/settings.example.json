@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "supabase-clinic": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest"]
+    }
+  }
+}
