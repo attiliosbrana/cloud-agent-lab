@@ -1,6 +1,6 @@
-# Deploying and Accessing the Gemini CLI on Google Cloud
+# Provisioning a Free‑Tier GCP VM for CLI Agents
 
-This document outlines the complete process used to deploy the Gemini CLI onto a free-tier Google Cloud Platform (GCP) Virtual Machine (VM), access it remotely, and troubleshoot common setup issues.
+This guide shows how to create an Ubuntu `e2-micro` VM on Google Cloud, connect via SSH, and prepare it for CLI coding agents. It pairs with `docs/VM_MULTI_AGENT_SETUP_PLAN.md`.
 
 ## Prerequisites
 
@@ -9,11 +9,11 @@ This document outlines the complete process used to deploy the Gemini CLI onto a
 
 ## Step-by-Step Guide
 
-The goal was to create a remote, accessible instance of the Gemini CLI. We accomplished this by provisioning a new VM and configuring the project along the way.
+The goal is to create a small, low‑cost remote development VM suitable for single‑agent workflows.
 
-### 1. Enabling Required APIs
+### 1. Enable Required APIs
 
-Before creating a VM, several underlying APIs needed to be enabled for the GCP project `<PROJECT_ID>`.
+Enable these APIs for the GCP project `<PROJECT_ID>`:
 
 -   **Compute Engine API**: The core API for creating and managing VMs.
     ```bash
@@ -24,9 +24,7 @@ Before creating a VM, several underlying APIs needed to be enabled for the GCP p
     gcloud services enable networkmanagement.googleapis.com --project=<PROJECT_ID>
     ```
 
-### 2. Creating the Virtual Machine
-
-After enabling the APIs, we created the VM. We encountered and resolved several issues during this process (see Troubleshooting section). The final, successful command was:
+### 2. Create the Virtual Machine
 
 ```bash
 gcloud compute instances create gemini-cli-vm \
@@ -39,7 +37,7 @@ gcloud compute instances create gemini-cli-vm \
     --metadata=enable-oslogin=TRUE
 ```
 
-**Command Breakdown:**
+Key flags:
 -   `gemini-cli-vm`: The name for our new VM.
 -   `--project`: Specifies the GCP project to use.
 -   `--zone`: The physical location where the VM is created.
@@ -47,31 +45,34 @@ gcloud compute instances create gemini-cli-vm \
 -   `--image-family=ubuntu-2204-lts` & `--image-project=ubuntu-os-cloud`: Specifies the latest stable version of Ubuntu 22.04 as the operating system.
 -   `--metadata=enable-oslogin=TRUE`: Enables a secure and recommended method for managing SSH access.
 
-### 3. Connecting to the VM
+### 3. Connect via SSH
 
 With the VM running, we connected to it using SSH. The `gcloud` tool handles all the authentication complexity.
 
 ```bash
 gcloud compute ssh gemini-cli-vm --zone=us-central1-a --project=<PROJECT_ID>
 ```
-This command opens a secure shell session directly into the Ubuntu environment on your new VM.
+This opens a secure shell session directly into the Ubuntu environment on your VM.
 
-### 4. Installing the Gemini CLI
+### 4. Install prerequisites and your agent(s)
 
-Once connected, the final step is to install the Gemini CLI on the remote machine. This step depends on the specific installation method for the CLI.
+Once connected, install prerequisites and your desired CLI agent(s).
 
-**Example (replace with your actual installation command):**
-```bash
-# Example using npm (Node Package Manager)
-sudo npm install -g @google/gemini-cli
+- If you plan to use Codex/Claude later, install Node.js 22 LTS first:
+  ```bash
+  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+  node -v
+  ```
 
-# Example using pip (Python Package Installer)
-pip install -g google-gemini-cli
-```
+- From the repo root, you can run the bootstrap helper to verify setup and create a convenience symlink:
+  ```bash
+  ./scripts/bootstrap.sh
+  ```
 
-After installation, you can run `gemini` directly from the remote shell.
+Refer to `docs/VM_MULTI_AGENT_SETUP_PLAN.md` for agent-specific install/usage steps.
 
-## Troubleshooting Log
+## Common Issues
 
 We resolved the following issues during the setup:
 
@@ -91,13 +92,13 @@ We resolved the following issues during the setup:
     -   **Cause**: This typically happens when trying to SSH into a VM that has not finished its boot sequence and started the SSH service.
     -   **Solution**: We waited a minute and retried. We also used the `gcloud compute ssh --troubleshoot` command, which required enabling the `networkmanagement.googleapis.com` API but ultimately confirmed the VM was reachable. The final connection attempt was successful.
 
-## How to Manage Your VM
+## Manage Your VM
 
 Here are the essential commands to manage your new VM from your local machine.
 
 -   **Connect to the VM:**
     ```bash
-    gcloud compute ssh gemini-cli-vm --zone=us-central1-a
+    gcloud compute ssh gemini-cli-vm --zone=us-central1-a --project=<PROJECT_ID>
     ```
 
 -   **Stop the VM (to prevent incurring charges if you exceed free-tier limits):**

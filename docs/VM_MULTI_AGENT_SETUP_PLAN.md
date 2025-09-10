@@ -6,7 +6,7 @@ A comprehensive plan to set up your VM as a remote development environment with 
 Your GCP VM is already provisioned with:
 - Ubuntu 22.04 LTS on `e2-micro` instance
 - Zone: `us-central1-a`
-- Gemini CLI already installed and configured with MCP
+- Gemini CLI already installed (MCP optional and deferred)
 
 ## **Phase 2: Install Additional CLI Tools**
 
@@ -15,13 +15,19 @@ Your GCP VM is already provisioned with:
 # SSH into VM
 gcloud compute ssh gemini-cli-vm --zone=us-central1-a --project=<PROJECT_ID>
 
-# Install Node.js 18+ (required for Claude Code)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Install Node.js 22 LTS (satisfies Codex >=22 and Claude Code >=18)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# Install Claude Code CLI
+# Verify
+node -v
+
+# Install Claude Code CLI (official)
+# Option A (preferred for version pinning)
+npm install -g @anthropic-ai/claude-code
+
+# Option B (bootstrap installer)
 curl -fsSL https://claude.ai/install.sh | bash
-# OR via npm: npm install -g @anthropic-ai/claude-code
 
 # Verify installation
 claude doctor
@@ -32,9 +38,8 @@ claude doctor
 # Install Codex CLI
 npm install -g @openai/codex
 
-# Set up environment variable (add to ~/.bashrc)
-echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.bashrc
-source ~/.bashrc
+# Set up environment variable in a private env file (see Phase 4)
+# Do NOT store secrets in .bashrc
 
 # Verify installation
 codex --version
@@ -92,55 +97,39 @@ EOF
 
 ### **4.1 Update Environment Variables**
 ```bash
-# Add all API keys to .env file
-cat >> ~/.env << EOF
-# OpenAI
+# Create a private env file used by the launcher
+cat > ~/.agents.env << 'EOF'
+# OpenAI (Codex CLI)
 OPENAI_API_KEY=your-openai-key
 
-# Anthropic (if not already set)
+# Anthropic (Claude Code)
 ANTHROPIC_API_KEY=your-anthropic-key
 
-# Gemini (already configured)
+# Gemini
 GEMINI_API_KEY=your-gemini-key
+
+# Optional: Supabase if you plan to use database integrations later
 SUPABASE_ACCESS_TOKEN=your-token
 SUPABASE_PROJECT_REF=your-ref
 SUPABASE_URL=your-url
 SUPABASE_ANON_KEY=your-key
 EOF
 
-# Source environment in .bashrc
-echo 'source ~/.env' >> ~/.bashrc
+# Restrict permissions
+chmod 600 ~/.agents.env
 ```
 
-### **4.2 Create Universal Agent Launcher**
+### **4.2 Universal Agent Launcher**
 ```bash
-# Create a universal script to launch any agent
-cat > ~/start-agent.sh << 'EOF'
-#!/bin/bash
-source ~/.env 2>/dev/null || true
+# Use the repo launcher (supports gemini, claude, codex)
+cd ~/cloud-agent-lab
+scripts/start-agent.sh --agent gemini -p "Hello from Gemini"
 
-case "$1" in
-    gemini)
-        shift
-        ~/start-gemini-with-env.sh "$@"
-        ;;
-    claude)
-        shift
-        claude "$@"
-        ;;
-    codex)
-        shift
-        codex "$@"
-        ;;
-    *)
-        echo "Usage: $0 {gemini|claude|codex} [options]"
-        exit 1
-        ;;
-esac
-EOF
-
-chmod +x ~/start-agent.sh
+# Optional symlink for convenience
+ln -sf "$PWD/scripts/start-agent.sh" ~/start-agent
 ```
+
+
 
 ## **Phase 5: Repository Integration**
 
@@ -168,13 +157,13 @@ ssh -i ~/.ssh/google_compute_engine username@<VM_EXTERNAL_IP>
 ### **6.2 Usage Examples**
 ```bash
 # Use Gemini for data analysis
-~/start-agent.sh gemini -p "Analyze the database schema"
+~/cloud-agent-lab/scripts/start-agent.sh --agent gemini -p "Analyze the database schema"
 
 # Use Claude for code help
-~/start-agent.sh claude -p "Review this Python function for bugs"
+~/cloud-agent-lab/scripts/start-agent.sh --agent claude -p "Review this Python function for bugs"
 
 # Use Codex for shell commands
-~/start-agent.sh codex "find all Python files modified in the last week"
+~/cloud-agent-lab/scripts/start-agent.sh --agent codex "find all Python files modified in the last week"
 ```
 
 ## **Phase 7: Cost Management**
@@ -200,16 +189,30 @@ gcloud compute instances list --filter="name:gemini-cli-vm"
 - **Persistent environment**: All tools and configurations remain between sessions
 
 ## **Security Considerations**
-- SSH keys provide secure authentication
-- Environment variables keep API keys safe
-- VM is isolated from your local machine
-- Can be easily destroyed and recreated if compromised
+- SSH keys with passphrases; restrict SSH to your IP or use IAP
+- Secrets in `~/.agents.env` (chmod 600); do not source secrets in `.bashrc`
+- VM is isolated from your local machine and can be rebuilt quickly
+- Enable UFW, unattended-upgrades, and fail2ban
 
 ## **System Requirements Summary**
-- **VM**: Ubuntu 22.04 LTS (already provisioned)
-- **Node.js**: v18+ for Claude Code CLI
-- **Memory**: 4GB minimum (8GB recommended)
-- **Storage**: 10GB boot disk (already configured)
+- **VM**: Ubuntu 22.04 LTS on `e2-micro` (single-agent usage)
+- **Node.js**: v22 LTS (Codex CLI ≥22, Claude Code ≥18)
+- **Memory**: ~1 GB RAM on e2-micro; add 2 GB swap
+- **Storage**: 10GB boot disk (works; prune caches). For comfort, 20–30GB.
 - **Network**: Stable internet connection for API calls
+
+## **Phase 1.5: Resource Tuning (Recommended on e2-micro)**
+```bash
+# Swap to reduce OOM risk (2G)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo swapon -a
+
+# Basic hardening & tools
+sudo apt-get update && sudo apt-get install -y unattended-upgrades fail2ban htop tmux
+sudo ufw allow OpenSSH && sudo ufw --force enable
+```
 
 This plan builds on your existing Gemini CLI setup and transforms your VM into a comprehensive remote development environment with all three AI coding assistants integrated with GitHub.

@@ -20,10 +20,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+get_node_major() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "0"
+    return
+  fi
+  local v
+  v=$(node -v 2>/dev/null | sed 's/^v//')
+  echo "${v%%.*}"
+}
+
 case "$AGENT" in
   gemini)
     if ! command -v gemini >/dev/null 2>&1; then
-      echo "[error] 'gemini' CLI not found. Install per docs/AGENT_INSTALLS.md" >&2
+      echo "[error] 'gemini' CLI not found. See docs/VM_MULTI_AGENT_SETUP_PLAN.md or README.md" >&2
       exit 1
     fi
     if [[ -n "$PROMPT" ]]; then
@@ -32,9 +42,43 @@ case "$AGENT" in
       exec gemini "${ARGS[@]}"
     fi
     ;;
+  claude)
+    if ! command -v claude >/dev/null 2>&1; then
+      echo "[error] 'claude' CLI not found. Install with: npm i -g @anthropic-ai/claude-code" >&2
+      exit 1
+    fi
+    # Require Node >=18 for Claude Code
+    nm=$(get_node_major)
+    if (( nm < 18 )); then
+      echo "[error] Node.js >=18 is required for Claude Code (found major $nm)." >&2
+      exit 1
+    fi
+    if [[ -n "$PROMPT" ]]; then
+      exec claude -p "$PROMPT" "${ARGS[@]}"
+    else
+      exec claude "${ARGS[@]}"
+    fi
+    ;;
+  codex)
+    if ! command -v codex >/dev/null 2>&1; then
+      echo "[error] 'codex' CLI not found. Install with: npm i -g @openai/codex" >&2
+      exit 1
+    fi
+    # Require Node >=22 for Codex CLI
+    nm=$(get_node_major)
+    if (( nm < 22 )); then
+      echo "[error] Node.js >=22 is required for OpenAI Codex CLI (found major $nm)." >&2
+      exit 1
+    fi
+    if [[ -n "$PROMPT" ]]; then
+      exec codex -p "$PROMPT" "${ARGS[@]}"
+    else
+      exec codex "${ARGS[@]}"
+    fi
+    ;;
   *)
     echo "[error] Unsupported agent: $AGENT" >&2
-    echo "Usage: $0 --agent gemini [-p 'question'] [extra args...]" >&2
+    echo "Usage: $0 --agent {gemini|claude|codex} [-p 'question'] [extra args...]" >&2
     exit 2
     ;;
 esac

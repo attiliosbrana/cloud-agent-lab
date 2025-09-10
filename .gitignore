@@ -1,0 +1,16 @@
+# Environment files (never commit real secrets)
+.env
+.env.*
+*.env
+*.env.local
+.agents.env
+
+# Local agent configs
+.gemini/settings.json
+.anthropic/
+
+# Node and runtime caches
+node_modules/
+npm-debug.log*
+.cache/
+
