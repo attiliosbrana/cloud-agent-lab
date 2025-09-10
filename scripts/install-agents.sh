@@ -30,14 +30,14 @@ install_codex() {
   echo "[info] Installing OpenAI Codex CLI (@openai/codex)"
   npm i -g @openai/codex
   echo "[ok] Installed Codex: $(command -v codex || echo 'codex not in PATH')"
-  echo "[note] Set OPENAI_API_KEY in ~/.agents.env or .env"
+  echo "[note] Authenticate per provider guidance when you first run the CLI."
 }
 
 install_claude() {
   echo "[info] Installing Anthropic Claude Code (@anthropic-ai/claude-code)"
   npm i -g @anthropic-ai/claude-code
   echo "[ok] Installed Claude: $(command -v claude || echo 'claude not in PATH')"
-  echo "[note] Set ANTHROPIC_API_KEY in ~/.agents.env or .env"
+  echo "[note] Authenticate per provider guidance when you first run the CLI."
 }
 
 case "$target" in
@@ -48,4 +48,3 @@ case "$target" in
 esac
 
 echo "[done] Install complete. Test with scripts/start-agent.sh --agent {codex|claude} -p 'Hello'"
-

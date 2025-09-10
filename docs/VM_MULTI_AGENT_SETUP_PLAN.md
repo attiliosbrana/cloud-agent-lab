@@ -38,9 +38,6 @@ claude doctor
 # Install Codex CLI
 npm install -g @openai/codex
 
-# Set up environment variable in a private env file (see Phase 4)
-# Do NOT store secrets in .bashrc
-
 # Verify installation
 codex --version
 ```
@@ -99,12 +96,6 @@ EOF
 ```bash
 # Create a private env file used by the launcher
 cat > ~/.agents.env << 'EOF'
-# OpenAI (Codex CLI)
-OPENAI_API_KEY=your-openai-key
-
-# Anthropic (Claude Code)
-ANTHROPIC_API_KEY=your-anthropic-key
-
 # Gemini
 GEMINI_API_KEY=your-gemini-key
 
